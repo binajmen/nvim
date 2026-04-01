@@ -102,7 +102,7 @@ vim.g.have_nerd_font = false
 vim.o.number = true
 -- You can also add relative line numbers, to help with jumping.
 --  Experiment for yourself to see if you like it!
--- vim.o.relativenumber = true
+vim.o.relativenumber = true
 
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.o.mouse = 'a'
@@ -165,6 +165,10 @@ vim.o.scrolloff = 10
 -- instead raise a dialog asking if you wish to save the current file(s)
 -- See `:help 'confirm'`
 vim.o.confirm = true
+
+vim.o.tabstop = 2 -- Set the number of spaces that a <Tab> counts for
+vim.o.shiftwidth = 2 -- Set the number of spaces to use for each step of (auto)indent
+vim.o.expandtab = true -- Use spaces instead of tabs
 
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
@@ -250,7 +254,7 @@ rtp:prepend(lazypath)
 -- NOTE: Here is where you install your plugins.
 require('lazy').setup({
   -- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
-  'NMAC427/guess-indent.nvim', -- Detect tabstop and shiftwidth automatically
+  -- 'NMAC427/guess-indent.nvim', -- Detect tabstop and shiftwidth automatically
 
   -- NOTE: Plugins can also be added by using a table,
   -- with the first argument being the link and the following
@@ -432,7 +436,7 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
       vim.keymap.set('n', '<leader>sk', builtin.keymaps, { desc = '[S]earch [K]eymaps' })
       vim.keymap.set('n', '<leader>sf', builtin.find_files, { desc = '[S]earch [F]iles' })
-      vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
+      vim.keymap.set('n', '<leader>ss', builtin.lsp_document_symbols, { desc = '[S]earch [S]ymbols' })
       vim.keymap.set('n', '<leader>sw', builtin.grep_string, { desc = '[S]earch current [W]ord' })
       vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = '[S]earch by [G]rep' })
       vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
@@ -643,20 +647,19 @@ require('lazy').setup({
             [vim.diagnostic.severity.HINT] = '󰌶 ',
           },
         } or {},
+        virtual_lines = false,
         virtual_text = {
           source = 'if_many',
           spacing = 2,
-          format = function(diagnostic)
-            local diagnostic_message = {
-              [vim.diagnostic.severity.ERROR] = diagnostic.message,
-              [vim.diagnostic.severity.WARN] = diagnostic.message,
-              [vim.diagnostic.severity.INFO] = diagnostic.message,
-              [vim.diagnostic.severity.HINT] = diagnostic.message,
-            }
-            return diagnostic_message[diagnostic.severity]
-          end,
         },
       }
+
+      -- Show diagnostics in float window on cursor hold
+      -- vim.api.nvim_create_autocmd('CursorHold', {
+      --   callback = function()
+      --     vim.diagnostic.open_float(nil, { focusable = false, scope = 'cursor' })
+      --   end,
+      -- })
 
       -- LSP servers and clients are able to communicate to each other what features they support.
       --  By default, Neovim doesn't support everything that is in the LSP specification.
@@ -688,6 +691,7 @@ require('lazy').setup({
         --
 
         ts_ls = {},
+        biome = {},
         lua_ls = {
           -- cmd = { ... },
           -- filetypes = { ... },
@@ -772,8 +776,40 @@ require('lazy').setup({
           }
         end
       end,
+      formatters = {
+
+        sql_formatter = {
+          args = {
+            '--config',
+            vim.json.encode {
+              language = 'postgresql',
+              tabWidth = 2,
+              keywordCase = 'lower',
+              dataTypeCase = 'lower',
+              functionCase = 'lower',
+              identifierCase = 'lower',
+              expressionWidth = 50,
+              linesBetweenQueries = 1,
+              logicalOperatorNewline = 'after',
+              newlineBeforeSemicolon = true,
+            },
+          },
+        },
+      },
       formatters_by_ft = {
         lua = { 'stylua' },
+        javascript = { 'biome' },
+        javascriptreact = { 'biome' },
+        typescript = { 'biome' },
+        typescriptreact = { 'biome' },
+        json = { 'biome' },
+        jsonc = { 'biome' },
+        sql = { 'sql_formatter' },
+        -- ["vue"] = { "biome" },
+        -- ["css"] = { "biome" },
+        -- ["scss"] = { "biome" },
+        -- ["less"] = { "biome" },
+        -- ["html"] = { "biome" },
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
         --
@@ -996,12 +1032,6 @@ require('lazy').setup({
     },
   },
 })
-
-vim.diagnostic.config {
-  virtual_lines = {
-    current_line = true,
-  },
-}
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
